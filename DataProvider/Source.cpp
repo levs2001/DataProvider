@@ -1,5 +1,6 @@
 #include<string>
 #include<vector>
+#include<iostream>
 
 using namespace std;
 
@@ -192,6 +193,10 @@ public:
 	static StorageSingleton* GetInstance() {
 		return pStorageSingleton_s;
 	}
+
+	static void Free() {
+		delete pStorageSingleton_s;
+	}
 protected:
 	StorageSingleton() {
 
@@ -251,21 +256,27 @@ void TestStorageSingleton::Init() {
 	if (pStorageSingleton_s == nullptr) {
 		pStorageSingleton_s = new TestStorageSingleton();
 	}
-	//return pStorageSingleton_s;
+	else {
+		//ASSERT
+		std::cerr << "Double Init error, last Init was for TestStorageSingleton";
+	}
 }
 
 void DataStorageSingleton::Init() {
 	if (pStorageSingleton_s == nullptr) {
 		pStorageSingleton_s = new DataStorageSingleton();
 	}
-	//return pStorageSingleton_s;
+	else {
+		//ASSERT
+		std::cerr << "Double Init error, last Init was for DataStorageSingleton";
+	}
 }
 
 int main(void) {
 	TestStorageSingleton::Init();
-	////DataStorageSingleton::Init();
+	//DataStorageSingleton::Init();
 	QDate date;
 	StorageSingleton::GetInstance()->GetShift(date, EShiftNum::I);
-	delete StorageSingleton::GetInstance();
+	StorageSingleton::GetInstance()->Free();
 	return 0;
 }
