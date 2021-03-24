@@ -2,6 +2,7 @@
 #include<vector>
 #include<iostream>
 
+#define TAPE_COUNT 6
 using namespace std;
 
 enum class  EShiftNum {
@@ -14,13 +15,13 @@ enum class  EShiftNum {
 
 enum class  EPost {
 	WORKER,
-	SHIFT_SUPERVISOR,
+	SHIFT_LEADER,
 	PRODUCTION_MANAGER
 };
 
 enum class  EStatus {
 	ONPLACE,
-	NOTONPLACE, 
+	NOTONPLACE,
 	FREE
 };
 
@@ -32,7 +33,7 @@ struct QDate {
 class Employee
 {
 public:
-	Employee(size_t id, string fullName, EPost post) : id(id), fullName(fullName), post(post) {
+	Employee(size_t id, string fullName, EPost post, EStatus status) : id(id), fullName(fullName), post(post), status(status) {
 
 	}
 
@@ -62,12 +63,16 @@ private:
 };
 
 
+
 class ProdTape {
 public:
 	ProdTape(size_t id, string name) : id(id), name(name) {
 
 	}
-
+	ProdTape() {
+		id = 255;
+		name = "empty";
+	}
 	void AddWorker(const Employee& worker) {
 		workers.push_back(worker);
 		//Need to remove from freeWorkers, but on the higher lvl
@@ -93,12 +98,12 @@ public:
 		return name;
 	}
 
-	const vector<Employee>& GetWorkers() {
+	vector<Employee>& GetWorkers() {
 		return workers;
 	}
 
 	size_t CountWorkers() {
-
+		return workers.size();
 	}
 private:
 	size_t id;
@@ -150,33 +155,35 @@ private:
 
 class Shift {
 public:
-	Shift(QDate date, EShiftNum shiftNum) : date(date), shiftNum(shiftNum) {
-
-	}
-	
-	void SetTapes(vector<ProdTape> newTapes) {
+	Shift(QDate date, EShiftNum shiftNum, size_t shiftLeader) : date(date), shiftNum(shiftNum), idShiftLeader(shiftLeader) {
 
 	}
 
-	void SetTape(ProdTape newTape) {
-
+	void SetTapes(ProdTape* newTapes) {
+		for (size_t i = 0; i != 6; ++i) {
+			tapes[i] = newTapes[i];
+		}
 	}
 
-	void AddTape() {
-
+	void SetTape(ProdTape& newTape) {
+		tapes[newTape.GetId()] = newTape;
 	}
 
-	const vector<ProdTape> GetTapes() {
+	//void AddTape() {
+		//фигня какая-то, зачем нам этот метод?!
+	//}
 
+	const ProdTape* GetTapes() {
+		return tapes;
 	}
 
-	const ProdTape GetTape(size_t id) {
-
+	ProdTape& GetTape(size_t id) {
+		return tapes[id];
 	}
 
 private:
 	size_t idShiftLeader;
-	vector<ProdTape> tapes;
+	ProdTape tapes[TAPE_COUNT];
 	QDate date;
 	EShiftNum shiftNum;
 };
@@ -213,44 +220,58 @@ public:
 	TestStorageSingleton(TestStorageSingleton& other) = delete;
 	void operator=(const TestStorageSingleton&) = delete;
 	static void Init();
-	
-	vector<Employee> GetFreeWorkers(QDate date, EShiftNum shiftNum) {
+
+	vector<Employee> GetFreeWorkers(QDate date, EShiftNum shiftNum) {//todo
+
 		vector<Employee> freeWorkers;
+
+		for (int j = 0; j != 10; ++j)
+			freeWorkers.push_back(Employee(j, std::to_string(j) + "_worker", EPost::WORKER, EStatus::FREE));
+
 		return freeWorkers;
 	}
 
-	Shift GetShift(QDate date, EShiftNum shiftNum) {
-		Shift shift(date, shiftNum);
+	Shift GetShift(QDate date, EShiftNum shiftNum) {//todo
+		Employee leader(239, "Vasia Pupkin", EPost::SHIFT_LEADER, EStatus::ONPLACE);
+
+		Shift shift(date, shiftNum, leader.GetId());
+
+		for (int i = 0; i != TAPE_COUNT; ++i) {
+
+			ProdTape tape(i, std::to_string(i));
+
+			for (int j = 0; j != 30; ++j)
+				tape.AddWorker(Employee(j, std::to_string(j) + "_worker", EPost::WORKER, EStatus::ONPLACE));
+			shift.SetTape(tape);
+		}
 		return shift;
 	}
 
 private:
-	TestStorageSingleton() : StorageSingleton(){
+	TestStorageSingleton() : StorageSingleton() {
 	}
 };
 
 
-class DataStorageSingleton : StorageSingleton {
-public:
-	DataStorageSingleton(DataStorageSingleton& other) = delete;
-	void operator=(const DataStorageSingleton&) = delete;
-	static void Init();
-	
-	vector<Employee> GetFreeWorkers(QDate date, EShiftNum shiftNum) {
-		vector<Employee> freeWorkers;
-		return freeWorkers;
-	}
-
-	Shift GetShift(QDate date, EShiftNum shiftNum) {
-		Shift shift(date, shiftNum);
-		return shift;
-	}
-private:
-	DataStorageSingleton() : StorageSingleton() {
-	}
-};
-
-
+//class DataStorageSingleton : StorageSingleton {
+//public:
+//	DataStorageSingleton(DataStorageSingleton& other) = delete;
+//	void operator=(const DataStorageSingleton&) = delete;
+//	static void Init();
+//	
+//	vector<Employee> GetFreeWorkers(QDate date, EShiftNum shiftNum) {
+//		vector<Employee> freeWorkers;
+//		return freeWorkers;
+//	}
+//
+//	Shift& GetShift(QDate date, EShiftNum shiftNum) {
+//		Shift shift(date, shiftNum,);
+//		return shift;
+//	}
+//private:
+//	DataStorageSingleton() : StorageSingleton() {
+//	}
+//};
 
 void TestStorageSingleton::Init() {
 	if (pStorageSingleton_s == nullptr) {
@@ -262,21 +283,37 @@ void TestStorageSingleton::Init() {
 	}
 }
 
-void DataStorageSingleton::Init() {
-	if (pStorageSingleton_s == nullptr) {
-		pStorageSingleton_s = new DataStorageSingleton();
-	}
-	else {
-		//ASSERT
-		std::cerr << "Double Init error, last Init was for DataStorageSingleton";
-	}
-}
+//void DataStorageSingleton::Init() {
+//	if (pStorageSingleton_s == nullptr) {
+//		pStorageSingleton_s = new DataStorageSingleton();
+//	}
+//	else {
+//		//ASSERT
+//		std::cerr << "Double Init error, last Init was for DataStorageSingleton";
+//	}
+//}
 
 int main(void) {
 	TestStorageSingleton::Init();
-	//DataStorageSingleton::Init();
+	//DataStorageSingleton::Init();				   
 	QDate date;
-	StorageSingleton::GetInstance()->GetShift(date, EShiftNum::I);
+
+	Shift shift = StorageSingleton::GetInstance()->GetShift(date, EShiftNum::I);
+
+	for (int i = 0; i != TAPE_COUNT; i++) {
+		cout << "Tape " << i << endl;
+		for (int j = 0; j < shift.GetTape(i).CountWorkers(); j++) {
+			cout << "\t" << (shift.GetTape(i).GetWorkers()[j]).GetFullName() << endl;
+		}
+	}
+
+	vector<Employee> freeWorkers = StorageSingleton::GetInstance()->GetFreeWorkers(date, EShiftNum::I);
+
+	cout << "\n" << "Free workers" << endl;
+	for (Employee freeWorker : freeWorkers) {
+		cout << "\t" << freeWorker.GetFullName() << endl;
+	}
+
 	StorageSingleton::GetInstance()->Free();
 	return 0;
 }
